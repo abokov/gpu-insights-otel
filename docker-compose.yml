@@ -1,0 +1,38 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # 1. NVIDIA Data Center GPU Manager (DCGM) Exporter
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
+    container_name: dcgm-exporter
+    restart: always
+    cap_add:
+      - SYS_ADMIN
+    ports:
+      - "9400:9400"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility]
+
+  # 2. OpenTelemetry Collector (Contrib edition for Splunk Exporter)
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.95.0
+    container_name: gpu-insights-otel-collector
+    restart: always
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./deploy/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    environment:
+      # These should be passed in via a .env file locally
+      - SPLUNK_HEC_URL=${SPLUNK_HEC_URL:-https://localhost:8088/services/collector}
+      - SPLUNK_HEC_TOKEN=${SPLUNK_HEC_TOKEN:-00000000-0000-0000-0000-000000000000}
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    depends_on:
+      - dcgm-exporter
