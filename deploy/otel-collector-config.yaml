@@ -1,0 +1,54 @@
+# deploy/otel-collector-config.yaml
+receivers:
+  # Scrape metrics directly from the NVIDIA DCGM Exporter
+  prometheus/dcgm:
+    config:
+      scrape_configs:
+        - job_name: 'nvidia_dcgm'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['dcgm-exporter:9400']
+
+processors:
+  batch:
+    send_batch_size: 1000
+    timeout: 10s
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1000
+    spike_limit_mib: 200
+
+  # Enrich the telemetry with Strategic Business Context
+  resource/gpu_cluster:
+    attributes:
+      - key: environment
+        value: "production"
+        action: insert
+      - key: ai.cluster.region
+        value: "us-west-accelerated-1"
+        action: insert
+      - key: hardware.architecture
+        value: "hopper-h100"
+        action: insert
+
+exporters:
+  # Export directly to Splunk HTTP Event Collector (HEC)
+  splunk_hec:
+    endpoint: "${SPLUNK_HEC_URL}"
+    token: "${SPLUNK_HEC_TOKEN}"
+    index: "ai_infrastructure_metrics"
+    sourcetype: "otel:nvidia:dcgm"
+    tls:
+      insecure_skip_verify: true
+
+  # Useful for local debugging during development
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    metrics/gpu_economics:
+      receivers: [prometheus/dcgm]
+      processors: [memory_limiter, resource/gpu_cluster, batch]
+      exporters: [splunk_hec, debug]
