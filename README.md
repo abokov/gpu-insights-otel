@@ -51,3 +51,11 @@ Deploy via Docker Compose:
 docker-compose up -d
 ```
 
+
+---
+
+## 📬 Contact & License
+
+**Author:** Alexey Bokov  
+**Contact:** [alex@bokov.net](mailto:alex@bokov.net)  
+**License:** This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
