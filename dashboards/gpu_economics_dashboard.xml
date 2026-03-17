@@ -1,0 +1,80 @@
+<form version="1.1">
+  <label>gpu-insights-otel: Inference TCO &amp; Efficiency</label>
+  <description>Real-time correlation of NVIDIA DCGM hardware metrics with LLM Token throughput via OpenTelemetry.</description>
+  
+  <fieldset submitButton="false">
+    <input type="time" token="time_range">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="cluster_select">
+      <label>Compute Cluster</label>
+      <choice value="*">All Clusters</choice>
+      <choice value="azure_us_west_h100">Azure US-West (H100)</choice>
+      <choice value="gcp_us_central_a100">GCP US-Central (A100)</choice>
+      <default>*</default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <title>Live Inference Efficiency Score (IES)</title>
+      <single>
+        <search>
+          <query>
+            index=ai_infrastructure_metrics cluster=$cluster_select$ sourcetype="otel:nvidia:dcgm" OR sourcetype="llm:inference"
+            | stats avg(tokens_per_second) as avg_tps, avg(power_draw_kw) as avg_kw, avg(gpu_utilization) as avg_util
+            | eval IES = avg_tps / (avg_kw * (avg_util/100))
+            | table IES
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0.00</option>
+        <option name="trendInterval">auto</option>
+      </single>
+    </panel>
+    
+    <panel>
+      <title>TCO: Cost per 1K Tokens vs. Power Draw</title>
+      <chart>
+        <search>
+          <query>
+            index=ai_infrastructure_metrics cluster=$cluster_select$ 
+            | timechart avg(cost_per_1k_tokens) as Token_Cost, avg(power_draw_kw) as Power_KW
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart.overlayFields">Power_KW</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Thermal Throttling Impact on Generation Latency</title>
+      <chart>
+        <search>
+          <query>
+            index=ai_infrastructure_metrics cluster=$cluster_select$ sourcetype="otel:nvidia:dcgm"
+            | eval is_throttling = if(gpu_temp > 85, 1, 0)
+            | timechart avg(generation_latency_ms) as Latency_MS by is_throttling
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.seriesColors">[0x118832, 0xD93F3C]</option>
+      </chart>
+    </panel>
+  </row>
+</form>
