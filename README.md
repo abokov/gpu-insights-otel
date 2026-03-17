@@ -1,3 +1,4 @@
+
 # 📉 gpu-insights-otel: OpenTelemetry for AI Inference Economics
 
 An OpenTelemetry-native observability framework for mapping hardware-level GPU telemetry to LLM performance, designed to calculate the true Total Cost of Ownership (TCO) per Token in multi-cloud AI clusters.
