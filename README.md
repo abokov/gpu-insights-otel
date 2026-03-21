@@ -55,7 +55,7 @@ docker-compose up -d
 
 ---
 
-3. ** 📬 Contact & License
+3.  📬 Contact & License
 
 **Author:** Alexey Bokov  
 **Contact:** [alex@bokov.net](mailto:alex@bokov.net)  
